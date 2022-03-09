@@ -164,7 +164,7 @@ public class RollCalcUI extends JPanel {
 	}
 	
 	private static String cut(double d, int length) {
-		String s = "" +d;
+		String s = String.format("%." + (length-2) + "f", d);
 		return s.substring(0, Math.min(s.length(), length));
 	}
 

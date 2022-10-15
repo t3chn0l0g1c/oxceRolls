@@ -32,6 +32,11 @@ public class Calc {
 			this.chance = chance;
 			this.dmg = dmg;
 		}
+		
+		@Override
+		public String toString() {
+			return "[dmg:" + dmg + ", chance:" + chance + "]";
+		}
 	}
 
 	private static void calculate(double nodeChance, int prevDmg, int depth, HitChance[] chanceArray, double[] results, int hp, int depthLimit) {
@@ -198,6 +203,89 @@ public class Calc {
 		return (int) (Math.ceil(Math.log(1_000_000_000_000L) / Math.log(chances)));
 	}
 	
+	public static Calc2Result calcHitsFaster(Calc1Result r) {
+		long t1 = System.currentTimeMillis();
+		HitChance[] shots = adjust(r.target.hp + r.target.armor, r.hitChances);
+		HitChance[] prev = adjust(r.target.hp + r.target.armor, r.hitChances);
+		HitChance[] next = new HitChance[r.target.hp];
+		double killChance = 0;
+		double[] results = new double[r.depth+1];
+		
+		for(int i = 1; i<r.depth; i++) {
+			for(HitChance h : shots) {
+				if(h==null) {
+					continue;
+				}
+				for(HitChance p : prev) {
+					if(p==null) {
+						p = new HitChance(1d, 0);
+					}
+					int dmg = h.dmg + p.dmg;
+					double chance = h.chance * p.chance;
+					if(dmg>=r.target.hp) {
+						killChance += chance;
+					} else {
+						HitChance n = next[dmg];
+						if(n==null) {
+							n = new HitChance(chance, dmg);
+							next[dmg] = n;
+						} else {
+							n.chance += chance;
+						}
+					}
+				}
+			}
+			results[i+1] = killChance;
+			killChance = 0;
+			prev = next;
+			next = new HitChance[r.target.hp];
+		}
+		
+		double noKill = 0;
+		for(int i = 1; i<results.length; i++) {
+			System.out.println("Hits: " + i + " chance " + results[i]);
+			noKill += results[i];
+		}
+		noKill = 1d-noKill;
+		results[0] = noKill;
+		System.out.println("Hits more than " + r.depth + " chance " + results[0]);
+//		sanityCheck += results[0];
+		
+		// should be lim(1)
+//		System.out.println(sanityCheck);
+		
+		Calc2Result result = new Calc2Result();
+		result.chances = results;
+		result.accuracy = 1d;
+		
+		long t2 = System.currentTimeMillis();
+		System.out.println("took " + (t2-t1) + "ms");
+		
+		return result;
+	}
+	
+
+	private static HitChance[] adjust(int max, HitChance[] hitChances) {
+		Map<Integer, Double> map = new HashMap<>();
+		for(HitChance c : hitChances) {
+			int dmg = Math.min(c.dmg, max);
+			Double d = map.get(dmg);
+			if(d==null) {
+				d = 0d;
+			}
+			d += c.chance;
+			map.put(dmg, d);
+		}
+		List<Map.Entry<Integer, Double>> entries = new ArrayList<>(map.entrySet());
+		Collections.sort(entries, (o1, o2) -> o2.getKey()-o1.getKey());
+		HitChance[] result = new HitChance[entries.size()];
+		for(int i = 0; i<result.length; i++) {
+			Map.Entry<Integer, Double> e = entries.get(i);
+			result[i] = new HitChance(e.getValue(), e.getKey());
+		}
+		return result;
+	}
+
 	public static Calc2Result calcHits(Calc1Result r) throws Exception {
 		if(Math.pow(r.hitChances[0].dmg, r.depth)<r.target.hp) {
 			System.out.println("Not possible to kill target with " + r.depth + " shots.");

@@ -4,7 +4,6 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.math.BigInteger;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -50,7 +49,7 @@ public class RollCalcUI extends JPanel {
 		Util.addComponent(this, p1, 1, 1, 1, 1, GridBagConstraints.NORTH, GridBagConstraints.NONE);
 		
 		output2 = new JTable();
-		((DefaultTableModel)output2.getModel()).setDataVector(new Object[15][2], new String[] {"Chance", "Shots"});
+		((DefaultTableModel)output2.getModel()).setDataVector(new Object[15][2], new String[] {"Shots", "Chance"});
 		output2.setEnabled(false);
 		output2.getColumnModel().getColumn(0).setPreferredWidth(100);
 		output2.getColumnModel().getColumn(1).setPreferredWidth(200);
@@ -106,12 +105,12 @@ public class RollCalcUI extends JPanel {
 		// TODO -field on UI for roll count
 		Calc1Result r = Calc.calc1(new Target(hp, armor), rolls, lowLimit, highLimit, dmg, hitChance);
 		
-		if(!depth) {
-			ip.depth.setText("" + r.depth);
-		}
-		BigInteger b1 = BigInteger.valueOf(r.hitChances.length);
+//		if(!depth) {
+//			ip.depth.setText("" + r.depth);
+//		}
+//		BigInteger b1 = BigInteger.valueOf(r.hitChances.length);
 		
-		ip.ops.setText("" + b1.pow(Util.getInt(ip.depth)));
+//		ip.ops.setText("" + b1.pow(Util.getInt(ip.depth)));
 		
 		Object[][] t1 = new Object[r.hitChances.length][2];
 		
@@ -129,22 +128,22 @@ public class RollCalcUI extends JPanel {
 		}
 		// high depth would not terminate in a lifetime
 		// very high depth can even take ages just to calculate the ops
-		Util.getRangedInt(inputPanel.depth, 1, 999);
+		Util.getRangedInt(inputPanel.depth, 1, 100000000);
 		calculate1(inputPanel, output1, true);
 	}
 	private void calculate2(InputPanel ip, JTable output2) {
 		Calc1Result r1 = calculate1(inputPanel, output1, true);
-		r1.depth = Util.getRangedInt(inputPanel.depth, 1, 999);
+		r1.depth = Util.getRangedInt(inputPanel.depth, 1, 100000000);
 		
 		Calc2Result r2 = null;
 		try {
-			r2 = Calc.calcHits(r1);
+			r2 = Calc.calcHitsFaster(r1);
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 		
 		Object[][] model = createModel(r2, r1.depth);
-		((DefaultTableModel)output2.getModel()).setDataVector(model, new String[] {"Chance", "Shots"});
+		((DefaultTableModel)output2.getModel()).setDataVector(model, new String[] {"Shots", "Chance"});
 	}
 
 
@@ -153,39 +152,40 @@ public class RollCalcUI extends JPanel {
 			return new Object[][] {{depth + "+", "1.0"}};
 		}
 		
-		int cutOff = calcCutOff(r2.accuracy);
+//		int cutOff = calcCutOff(r2.accuracy);
 		Object[][] result = new Object[r2.chances.length][2];
 
 		for(int i = 0; i<r2.chances.length; i++) {
-			result[i] = new Object[] {i, cut(r2.chances[i], cutOff)};
+//			result[i] = new Object[] {i, cut(r2.chances[i], cutOff)};
+			result[i] = new Object[] {i, r2.chances[i]};
 		}
 		result[0][0] = (r2.chances.length-1)+"+";
 		return result;
 	}
 	
-	private static String cut(double d, int length) {
-		String s = String.format("%." + (length-2) + "f", d);
-		return s.substring(0, Math.min(s.length(), length));
-	}
-
-
-	private int calcCutOff(double accuracy) {
-		String s = "" + accuracy;
-		char t = 'x';
-		if(s.startsWith("1")) {
-			t = '0';
-		} else if(s.startsWith("0")) {
-			t = '9';
-		} else {
-			throw new RuntimeException("wtf? accuracy " + accuracy);
-		}
-		for(int i = 2; i<s.length(); i++) {
-			if(s.charAt(i)!=t) {
-				return i;
-			}
-		}
-		return s.length();
-	}
+//	private static String cut(double d, int length) {
+//		String s = String.format("%." + (length-2) + "f", d);
+//		return s.substring(0, Math.min(s.length(), length));
+//	}
+//
+//
+//	private int calcCutOff(double accuracy) {
+//		String s = "" + accuracy;
+//		char t = 'x';
+//		if(s.startsWith("1")) {
+//			t = '0';
+//		} else if(s.startsWith("0")) {
+//			t = '9';
+//		} else {
+//			throw new RuntimeException("wtf? accuracy " + accuracy);
+//		}
+//		for(int i = 2; i<s.length(); i++) {
+//			if(s.charAt(i)!=t) {
+//				return i;
+//			}
+//		}
+//		return s.length();
+//	}
 
 
 	private class InputPanel extends JPanel {
@@ -200,7 +200,7 @@ public class RollCalcUI extends JPanel {
 		private JTextField dmg;
 		
 		private JTextField depth;
-		private JLabel ops;
+//		private JLabel ops;
 		
 		public InputPanel() {
 			setLayout(new GridBagLayout());
@@ -232,7 +232,7 @@ public class RollCalcUI extends JPanel {
 			dmg.getDocument().addDocumentListener(Listener1.instance1);
 			
 			depth = Util.addLabeledTextField("Search Depth", 7, this);
-			depth.setText("7");
+			depth.setText("15");
 			depth.getDocument().addDocumentListener(new DocumentListener() {
 				public void removeUpdate(DocumentEvent e) {
 					depth();
@@ -244,9 +244,9 @@ public class RollCalcUI extends JPanel {
 					depth();
 				}
 			});
-			ops = Util.addLabeledLabel("Ops", 8, this);
-			ops.setMinimumSize(new Dimension(100, 20));
-			ops.setPreferredSize(new Dimension(100, 20));
+//			ops = Util.addLabeledLabel("Ops", 8, this);
+//			ops.setMinimumSize(new Dimension(100, 20));
+//			ops.setPreferredSize(new Dimension(100, 20));
 			
 		}
 		
@@ -256,7 +256,7 @@ public class RollCalcUI extends JPanel {
 	public static void main(String[] args) {
 
 		JFrame frame = new JFrame();
-		frame.setSize(800, 700);
+		frame.setSize(900, 700);
 
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 

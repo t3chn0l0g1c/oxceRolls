@@ -5,11 +5,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 public class Calc {
 	
@@ -36,84 +31,6 @@ public class Calc {
 		@Override
 		public String toString() {
 			return "[dmg:" + dmg + ", chance:" + chance + "]";
-		}
-	}
-
-	private static void calculate(double nodeChance, int prevDmg, int depth, HitChance[] chanceArray, double[] results, int hp, int depthLimit) {
-		int newDepth = depth+1;
-		for(HitChance c : chanceArray) {
-			int totalDmg = prevDmg + c.dmg;
-			double branchChance = nodeChance * c.chance;
-			if(totalDmg>=hp){
-				results[newDepth] += branchChance;
-			} else if(newDepth==depthLimit){
-				results[0] += branchChance;
-			} else {
-				calculate(branchChance, totalDmg, newDepth, chanceArray, results, hp, depthLimit);
-			}
-		}
-	}
-	
-	
-	private static class Branch implements Callable<double[]> {
-
-		private final double bNodeChance;
-		private final int bDmg;
-		private final int bDepth;
-		private final HitChance[] chanceArray;
-		private final int hp;
-		private final int depthLimit;
-		
-		public Branch(double bNodeChance, int bDmg, int bDepth, HitChance[] chanceArray, int hp, int depthLimit) {
-			this.bNodeChance = bNodeChance;
-			this.bDmg = bDmg;
-			this.bDepth = bDepth;
-			this.chanceArray = chanceArray;
-			this.hp = hp;
-			this.depthLimit = depthLimit;
-		}
-
-		@Override
-		public double[] call() throws Exception {
-			double[] results = new double[depthLimit+1];
-			calculate(bNodeChance, bDmg, bDepth, chanceArray, results, hp, depthLimit);
-			return results;
-		}
-
-	}
-	
-	private static List<Branch> split(int cores, double[] results, HitChance[] chanceArray, int hp, int depthLimit) {
-		// unroll at least 4*cores count callables
-		// be noted, 4*cores is an arbitrary chosen number
-		int chances = chanceArray.length;
-		
-		int targetDepth = 1;
-		while(Math.pow(chances, targetDepth)<cores*4) {
-			targetDepth++;
-		}
-		
-		List<Branch> result = new ArrayList<>();
-		
-		split(1.0, 0, 0, chanceArray, results, hp, depthLimit, targetDepth, result);
-		System.out.println("Branching to " + result.size() + " for MT");
-		return result;
-	}
-
-	private static void split(double nodeChance, int prevDmg, int depth, HitChance[] chanceArray, double[] results, int hp, int depthLimit, int targetDepth, List<Branch> branches) {
-		int newDepth = depth+1;
-		for(HitChance c : chanceArray) {
-			int totalDmg = prevDmg + c.dmg;
-			double branchChance = nodeChance * c.chance;
-			if(totalDmg>=hp){
-				results[newDepth] += branchChance;
-			} else if(newDepth==depthLimit){
-				results[0] += branchChance;
-			} else if(newDepth<targetDepth) {
-				split(branchChance, totalDmg, newDepth, chanceArray, results, hp, depthLimit, targetDepth, branches);
-			} else if(newDepth==targetDepth) {
-				Branch b = new Branch(branchChance, totalDmg, newDepth, chanceArray, hp, depthLimit);
-				branches.add(b);
-			}
 		}
 	}
 
@@ -285,58 +202,6 @@ public class Calc {
 		}
 		return result;
 	}
-
-	public static Calc2Result calcHits(Calc1Result r) throws Exception {
-		if(Math.pow(r.hitChances[0].dmg, r.depth)<r.target.hp) {
-			System.out.println("Not possible to kill target with " + r.depth + " shots.");
-			Calc2Result result = new Calc2Result();
-			result.accuracy = 1;
-			result.chances = new double[0];
-			return result;
-		}
-
-		int cores = Runtime.getRuntime().availableProcessors()-1;
-		ThreadPoolExecutor tpe = new ThreadPoolExecutor(cores, cores, 1, TimeUnit.SECONDS, new LinkedBlockingDeque<Runnable>());
-		
-		double[] results = new double[r.depth+1];
-		
-		long t1 = System.currentTimeMillis();
-		
-		// build tree with % chances
-//		calculate(1.0, 0, 0, chanceArray, results, t.hp, depthLimit);
-		List<Branch> branches = split(cores, results, r.hitChances, r.target.hp, r.depth);
-		
-		List<Future<double[]>> futures = tpe.invokeAll(branches);
-		
-		for(Future<double[]> f : futures) {
-			double[] d = f.get();
-			for(int i = 0; i<d.length; i++) {
-				results[i] += d[i];
-			}
-		}
-		
-		long t2 = System.currentTimeMillis();
-		System.out.println("took " + (t2-t1) + "ms");
-		
-		tpe.shutdown();
-		
-		double sanityCheck = 0;
-		for(int i = 1; i<results.length; i++) {
-			System.out.println("Hits: " + i + " chance " + results[i]);
-			sanityCheck += results[i];
-		}
-		System.out.println("Hits more than " + r.depth + " chance " + results[0]);
-		sanityCheck += results[0];
-		
-		// should be lim(1)
-		System.out.println(sanityCheck);
-		
-		Calc2Result result = new Calc2Result();
-		result.chances = results;
-		result.accuracy = sanityCheck;
-		return result;
-	}
-	
 	
 	public static void main(String[] args) throws Exception {
 		
@@ -352,7 +217,7 @@ public class Calc {
 		
 		Calc1Result r = calc1(t, 1, lowLimit, highLimit, dmg, hitChance);
 		
-		Calc2Result r2 = calcHits(r);
+		Calc2Result r2 = calcHitsFaster(r);
 	}
 
 }

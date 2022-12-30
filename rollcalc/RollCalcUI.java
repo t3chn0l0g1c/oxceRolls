@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.math.BigDecimal;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -115,7 +116,7 @@ public class RollCalcUI extends JPanel {
 		Object[][] t1 = new Object[r.hitChances.length][2];
 		
 		for(int i = 0; i<t1.length; i++) {
-			t1[t1.length-i-1] = new Object[] {r.hitChances[i].chance, r.hitChances[i].dmg};
+			t1[t1.length-i-1] = new Object[] {cut(r.hitChances[i].chance, 16), r.hitChances[i].dmg};
 		}
 		((DefaultTableModel)output1.getModel()).setDataVector(t1, new String[] {"Chance", "Damage"});
 		
@@ -156,17 +157,19 @@ public class RollCalcUI extends JPanel {
 		Object[][] result = new Object[r2.chances.length][2];
 
 		for(int i = 0; i<r2.chances.length; i++) {
-//			result[i] = new Object[] {i, cut(r2.chances[i], cutOff)};
-			result[i] = new Object[] {i, r2.chances[i]};
+			result[i] = new Object[] {i, cut(r2.chances[i], 16)};
+//			result[i] = new Object[] {i, r2.chances[i]};
 		}
 		result[0][0] = (r2.chances.length-1)+"+";
 		return result;
 	}
 	
-//	private static String cut(double d, int length) {
+	private static String cut(double d, int length) {
+		String s = new BigDecimal(d).toString();
+		return s.substring(0, Math.min(s.length(), length));
 //		String s = String.format("%." + (length-2) + "f", d);
 //		return s.substring(0, Math.min(s.length(), length));
-//	}
+	}
 //
 //
 //	private int calcCutOff(double accuracy) {

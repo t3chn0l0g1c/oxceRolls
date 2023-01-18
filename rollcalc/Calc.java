@@ -93,11 +93,11 @@ public class Calc {
 	
 	private static void calcRolls(int low, int high, int armor, int dmg, double chancePerRoll, double branchChance, int rolls, int i, Map<Integer, Double> dmgToOccurrence) {
 		for(int i1 = low; i1<=high; i1++) {
-			int healthDmg = Math.max(0, i1-armor) + dmg;
+			int d2 = i1+dmg;
 			if(i==rolls) {
-				addToMap(healthDmg, chancePerRoll+branchChance, dmgToOccurrence);
+				addToMap(Math.max(0, d2-armor), chancePerRoll+branchChance, dmgToOccurrence);
 			} else {
-				calcRolls(low, high, armor, healthDmg, chancePerRoll, chancePerRoll+branchChance, rolls, i+1, dmgToOccurrence);
+				calcRolls(low, high, armor, d2, chancePerRoll, chancePerRoll+branchChance, rolls, i+1, dmgToOccurrence);
 			}
 		}
 	}

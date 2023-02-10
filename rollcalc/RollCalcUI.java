@@ -116,7 +116,7 @@ public class RollCalcUI extends JPanel {
 		Object[][] t1 = new Object[r.hitChances.length][2];
 		
 		for(int i = 0; i<t1.length; i++) {
-			t1[t1.length-i-1] = new Object[] {cut(r.hitChances[i].chance, 16), r.hitChances[i].dmg};
+			t1[t1.length-i-1] = new Object[] {r.hitChances[i].chance, r.hitChances[i].dmg};
 		}
 		((DefaultTableModel)output1.getModel()).setDataVector(t1, new String[] {"Chance", "Damage"});
 		
@@ -157,7 +157,7 @@ public class RollCalcUI extends JPanel {
 		Object[][] result = new Object[r2.chances.length][2];
 
 		for(int i = 0; i<r2.chances.length; i++) {
-			result[i] = new Object[] {i, cut(r2.chances[i], 16)};
+			result[i] = new Object[] {i, r2.chances[i]};
 //			result[i] = new Object[] {i, r2.chances[i]};
 		}
 		result[0][0] = (r2.chances.length-1)+"+";

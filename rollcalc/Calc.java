@@ -67,20 +67,20 @@ public class Calc {
 			}
 		}
 	}
-	
-	private static void calcRolls(double hitChance, int low, int high, int armor, Map<Integer, Double> dmgToOccurrence) {
-		
-		int rolls = high-low;
-		double chancePerRoll = hitChance;
-		if(rolls>0) {
-			chancePerRoll = hitChance/rolls;
-		}
-		for(int i = low; i<=high; i++) {
-			int healthDmg = Math.max(0, i-armor);
-			addToMap(healthDmg, chancePerRoll, dmgToOccurrence);
-		}
-		
-	}
+//	
+//	private static void calcRolls(double hitChance, int low, int high, int armor, Map<Integer, Double> dmgToOccurrence) {
+//		
+//		int rolls = high-low;
+//		double chancePerRoll = hitChance;
+//		if(rolls>0) {
+//			chancePerRoll = hitChance/rolls;
+//		}
+//		for(int i = low; i<=high; i++) {
+//			int healthDmg = Math.max(0, i-armor);
+//			addToMap(healthDmg, chancePerRoll, dmgToOccurrence);
+//		}
+//		
+//	}
 	
 	private static void addToMap(int dmg, double chance, Map<Integer, Double> dmgToOccurrence) {
 		Double c = dmgToOccurrence.get(dmg);
@@ -205,8 +205,11 @@ public class Calc {
 				}
 			}
 			killChance *= remaining;
-			remaining -= killChance;
 			results[i+1] = killChance;
+			remaining -= killChance;
+			if(remaining<=0) {
+				break;
+			}
 			killChance = 0;
 			
 			prev = next;
@@ -219,6 +222,7 @@ public class Calc {
 			noKill += results[i];
 		}
 		noKill = 1d-noKill;
+		noKill = Math.max(noKill, 0);
 		results[0] = noKill;
 		System.out.println("Hits more than " + r.depth + " chance " + results[0]);
 //		sanityCheck += results[0];

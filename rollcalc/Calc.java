@@ -17,7 +17,6 @@ public class Calc {
 			this.armor = armor;
 		}
 		
-		
 	}
 	
 	public static class HitChance {
@@ -45,42 +44,6 @@ public class Calc {
 		double accuracy;
 	}
 	
-	private static void rollInternal(int depth, int limit, int prevPercent, int low, int high, int dmg, int armor, Map<Integer, Integer> dmgToOccurrence) {
-		for(int i = low; i<=high; i++) {
-			if(depth==limit) {
-				// convert dmg with %
-				double percent = (i+prevPercent)/100d;
-//				int rolledDmg = (dmg * (i+prevPercent))/100;
-				int rolledDmg = (int)(percent*dmg);
-				// subtract armor
-				int healthDmg = Math.max(0, rolledDmg-armor);
-				// map to health dmg
-				// every % getting same dmg value adds up to % value
-				Integer c = dmgToOccurrence.get(healthDmg);
-				if(c==null) {
-					c = 0;
-				}
-				c = c+1;
-				dmgToOccurrence.put(healthDmg, c);
-			} else {
-				rollInternal(depth+1, limit, prevPercent+i, low, high, dmg, armor, dmgToOccurrence);
-			}
-		}
-	}
-//	
-//	private static void calcRolls(double hitChance, int low, int high, int armor, Map<Integer, Double> dmgToOccurrence) {
-//		
-//		int rolls = high-low;
-//		double chancePerRoll = hitChance;
-//		if(rolls>0) {
-//			chancePerRoll = hitChance/rolls;
-//		}
-//		for(int i = low; i<=high; i++) {
-//			int healthDmg = Math.max(0, i-armor);
-//			addToMap(healthDmg, chancePerRoll, dmgToOccurrence);
-//		}
-//		
-//	}
 	
 	private static void addToMap(int dmg, double chance, Map<Integer, Double> dmgToOccurrence) {
 		Double c = dmgToOccurrence.get(dmg);
@@ -120,15 +83,8 @@ public class Calc {
 		
 		double chancePerRoll = hitChance/dmgRolls;
 		
-		// TODO roll count roll^rolls
-		// needs recursive
-//		.
 		calcRolls(lowDmg, highDmg, t.armor, 0, chancePerRoll, 0, rolls, 1, dmgToOccurrence);
 
-//		for(int i1 = lowDmg; i1<=highDmg; i1++) {
-//			int healthDmg = Math.max(0, i1-t.armor);
-//			addToMap(healthDmg, chancePerRoll, dmgToOccurrence);
-//		}
 
 		double chancesSum = 0;
 		System.out.println("-----------");
@@ -164,83 +120,43 @@ public class Calc {
 	}
 	
 	public static Calc2Result calcHitsFaster(Calc1Result r) {
-		long t1 = System.currentTimeMillis();
-		HitChance[] shots = adjust(r.target.hp + r.target.armor, r.hitChances);
-		HitChance[] prev = adjust(r.target.hp + r.target.armor, r.hitChances);
-		HitChance[] next = new HitChance[r.target.hp];
-		double killChance = 0;
+		Target target = r.target;
+		HitChance[] shots = adjust(target.hp + target.armor, r.hitChances);
+		double[] accumulatedDamage = new double[target.hp+1];
+		accumulatedDamage[0] = 1;
+
 		double[] results = new double[r.depth+1];
 		
-		for(HitChance c : prev) {
-			if(c.dmg>=r.target.hp) {
-				killChance += c.chance;
-			}
-		}
-		results[1] = killChance;
-		double remaining = 1-killChance;
-		killChance = 0;
-		
-		for(int i = 1; i<r.depth; i++) {
-			for(HitChance h : shots) {
-				if(h==null) {
-					continue;
-				}
-				for(HitChance p : prev) {
-					if(p==null) {
-						p = new HitChance(1d, 0);
-					}
-					int dmg = h.dmg + p.dmg;
-					double chance = h.chance * p.chance;
-					if(dmg>=r.target.hp) {
-						killChance += chance;
-					} else {
-						HitChance n = next[dmg];
-						if(n==null) {
-							n = new HitChance(chance, dmg);
-							next[dmg] = n;
-						} else {
-							n.chance += chance;
-						}
-					}
-				}
-			}
-			killChance *= remaining;
-			results[i+1] = killChance;
-			remaining -= killChance;
-			if(remaining<=0) {
-				break;
-			}
-			killChance = 0;
+		for(int depth = 1; depth<=r.depth; depth++) {
 			
-			prev = next;
-			next = new HitChance[r.target.hp];
+			double[] next = new double[target.hp+1];
+			
+			for(HitChance shot : shots) {
+				for(int idx = 0; idx<accumulatedDamage.length; idx++) {
+					
+					int dmg = Math.min(idx+shot.dmg, target.hp);
+	                next[dmg] += accumulatedDamage[idx] * shot.chance;
+				}
+			}
+	        accumulatedDamage = next;
+	        results[depth] = accumulatedDamage[target.hp];
 		}
 		
-		double noKill = 0;
-		for(int i = 1; i<results.length; i++) {
-			System.out.println("Hits: " + i + " chance " + results[i]);
-			noKill += results[i];
+		double remaining = 1;
+		for(int i = results.length-1; i>0; i--) {
+			results[i] -= results[i-1];
+			remaining -= results[i];
 		}
-		noKill = 1d-noKill;
-		noKill = Math.max(noKill, 0);
-		results[0] = noKill;
-		System.out.println("Hits more than " + r.depth + " chance " + results[0]);
-//		sanityCheck += results[0];
-		
-		// should be lim(1)
-//		System.out.println(sanityCheck);
-		
-		Calc2Result result = new Calc2Result();
-		result.chances = results;
-		result.accuracy = 1d;
-		
-		long t2 = System.currentTimeMillis();
-		System.out.println("took " + (t2-t1) + "ms");
-		
-		return result;
+		results[0] = remaining;
+		for(double d : results) {
+			System.out.println(d);
+		}
+		Calc2Result res = new Calc2Result();
+		res.chances = results;
+		res.accuracy = 1;
+		return res;
 	}
 	
-
 	private static HitChance[] adjust(int max, HitChance[] hitChances) {
 		Map<Integer, Double> map = new HashMap<>();
 		for(HitChance c : hitChances) {
@@ -264,13 +180,13 @@ public class Calc {
 	
 	public static void main(String[] args) throws Exception {
 		
-		Target t = new Target(40, 10);
+		Target t = new Target(1, 0);
 		
 		
-		int lowLimit = 0;
-		int highLimit = 200;
+		int lowLimit = 100;
+		int highLimit = 100;
 		
-		int dmg = 20;
+		int dmg = 1;
 		
 		double hitChance = 0.5d;
 		

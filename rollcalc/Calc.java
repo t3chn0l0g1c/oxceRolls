@@ -37,6 +37,7 @@ public class Calc {
 		int depth;
 		HitChance[] hitChances;
 		Target target;
+		int salvo;
 	}
 	
 	public static class Calc2Result {
@@ -65,7 +66,7 @@ public class Calc {
 		}
 	}
 	
-	public static Calc1Result calc1(Target t, int rolls, int lowLimit, int highLimit, int dmg, double hitChance) {
+	public static Calc1Result calc1(Target t, int rolls, int lowLimit, int highLimit, int dmg, double hitChance, int salvo) {
 		
 		Map<Integer, Double> dmgToOccurrence = new HashMap<>();
 		
@@ -112,6 +113,7 @@ public class Calc {
 		r.depth = depthLimit;
 		r.hitChances = chanceArray;
 		r.target = t;
+		r.salvo = salvo;
 		return r;
 	}
 	
@@ -129,16 +131,20 @@ public class Calc {
 		
 		for(int depth = 1; depth<=r.depth; depth++) {
 			
+			for(int i = 0; i<r.salvo; i++) {
 			double[] next = new double[target.hp+1];
 			
-			for(HitChance shot : shots) {
-				for(int idx = 0; idx<accumulatedDamage.length; idx++) {
-					
-					int dmg = Math.min(idx+shot.dmg, target.hp);
-	                next[dmg] += accumulatedDamage[idx] * shot.chance;
+
+				for(HitChance shot : shots) {
+					for(int idx = 0; idx<accumulatedDamage.length; idx++) {
+						
+						int dmg = Math.min(idx+shot.dmg, target.hp);
+		                next[dmg] += accumulatedDamage[idx] * shot.chance;
+					}
 				}
+			
+				accumulatedDamage = next;
 			}
-	        accumulatedDamage = next;
 	        results[depth] = accumulatedDamage[target.hp];
 		}
 		
@@ -190,7 +196,7 @@ public class Calc {
 		
 		double hitChance = 0.5d;
 		
-		Calc1Result r = calc1(t, 1, lowLimit, highLimit, dmg, hitChance);
+		Calc1Result r = calc1(t, 1, lowLimit, highLimit, dmg, hitChance, 2);
 		
 		Calc2Result r2 = calcHitsFaster(r);
 	}

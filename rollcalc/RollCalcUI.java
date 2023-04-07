@@ -103,8 +103,10 @@ public class RollCalcUI extends JPanel {
 		
 		int rolls = Util.getRangedInt(ip.rolls, 1, 10);
 		
+		int salvo = Util.getRangedInt(ip.salvo, 1, 1_000_000_000);
+		
 		// TODO -field on UI for roll count
-		Calc1Result r = Calc.calc1(new Target(hp, armor), rolls, lowLimit, highLimit, dmg, hitChance);
+		Calc1Result r = Calc.calc1(new Target(hp, armor), rolls, lowLimit, highLimit, dmg, hitChance, salvo);
 		
 //		if(!depth) {
 //			ip.depth.setText("" + r.depth);
@@ -201,6 +203,7 @@ public class RollCalcUI extends JPanel {
 		
 		private JTextField hitChance;
 		private JTextField dmg;
+		private JTextField salvo;
 		
 		private JTextField depth;
 //		private JLabel ops;
@@ -234,7 +237,11 @@ public class RollCalcUI extends JPanel {
 			dmg.setText("20");
 			dmg.getDocument().addDocumentListener(Listener1.instance1);
 			
-			depth = Util.addLabeledTextField("Search Depth", 7, this);
+			salvo = Util.addLabeledTextField("Salvo", 7, this);
+			salvo.setText("1");
+			salvo.getDocument().addDocumentListener(Listener1.instance1);
+			
+			depth = Util.addLabeledTextField("Search Depth", 8, this);
 			depth.setText("15");
 			depth.getDocument().addDocumentListener(new DocumentListener() {
 				public void removeUpdate(DocumentEvent e) {
